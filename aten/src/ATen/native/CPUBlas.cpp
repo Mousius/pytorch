@@ -22,10 +22,10 @@ extern "C" void cgemm_(char *transa, char *transb, int *m, int *n, int *k, void 
 extern "C" void zgemm_(char *transa, char *transb, int *m, int *n, int *k, void *alpha, const void *a, int *lda, const void *b, int *ldb, void *beta, void *c, int *ldc);
 #ifdef BLAS_HAS_BGEMM
 extern "C" void bgemm_(char *transa, char *transb, int *m, int *n, int *k,
-                float *alpha,
+                const at::BFloat16 *alpha,
                 const at::BFloat16 *a, int *lda,
                 const at::BFloat16 *b, int *ldb,
-                float *beta,
+                const at::BFloat16 *beta,
                 at::BFloat16 *c, int *ldc);
 #endif  // BLAS_HAS_BGEMM
 #ifdef BLAS_HAS_SBGEMM
@@ -365,16 +365,9 @@ void gemm(
    if (use_blas_gemm(transa, transb, m, n, k, lda, ldb, ldc)) {
       int m_ = m, n_ = n, k_ = k, lda_ = lda, ldb_ = ldb, ldc_ = ldc;
       char transa_ = to_blas(transa), transb_ = to_blas(transb);
-      float alpha_ = alpha, beta_ = beta;
-      int c_size = n_ * m_;
-      // C matrix in OpenBLAS sbgemm are of type "float" so we have to convert, copy and copy back.
-      std::vector<float> float_v(c_size, 0.0f);
-      for (const auto j : c10::irange(n)) {
-        for (const auto i : c10::irange(m)) {
-          float_v[j * m_ + i] = c10::convert<float>(c[j * ldc_ + i]);
-        }
-      }
 #if defined(BLAS_HAS_BGEMM)
+      at::BFloat16 alpha_ = c10::convert<at::BFloat16>(alpha);
+      at::BFloat16 beta_ = c10::convert<at::BFloat16>(beta);
       bgemm_(&transa_, &transb_,
              &m_, &n_, &k_,
              &alpha_,
@@ -383,6 +376,15 @@ void gemm(
              &beta_,
              c, &ldc_);
 #else
+      // C matrix in OpenBLAS sbgemm are of type "float" so we have to convert, copy and copy back.
+      int c_size = n_ * m_;
+      std::vector<float> float_v(c_size, 0.0f);
+      for (const auto j : c10::irange(n)) {
+        for (const auto i : c10::irange(m)) {
+          float_v[j * m_ + i] = c10::convert<float>(c[j * ldc_ + i]);
+        }
+      }
+      float alpha_ = alpha, beta_ = beta;
       sbgemm_(&transa_, &transb_,
               &m_, &n_, &k_,
               &alpha_,
