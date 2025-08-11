@@ -343,11 +343,11 @@ void gemm(
    const float beta,
    at::BFloat16 *c, int64_t ldc) {
    internal::normalize_last_dims(transa, transb, m, n, k, &lda, &ldb, &ldc);
-#if 0
+#if AT_MKLDNN_ENABLED()
 #ifdef __aarch64__
    // MKLDNN also supports ARM for bf16, and the bypass is only
    // currently intended for x86/x86_64.
-   const bool use_bf16_gemv_trans = false;
+   const bool use_bf16_gemv_trans = true;
 #elif defined(__powerpc__)
    const bool use_bf16_gemv_trans = false;
 #else
