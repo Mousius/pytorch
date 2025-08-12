@@ -347,7 +347,7 @@ void gemm(
 #ifdef __aarch64__
    // MKLDNN also supports ARM for bf16, and the bypass is only
    // currently intended for x86/x86_64.
-   const bool use_bf16_gemv_trans = true;
+   const bool use_bf16_gemv_trans = (m == 1 || n == 1);
 #elif defined(__powerpc__)
    const bool use_bf16_gemv_trans = false;
 #else
